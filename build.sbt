@@ -1,4 +1,4 @@
-name := "lab-monad-compose"
+name := "lab-monadish"
 
 organization := "com.github.mboogerd"
 

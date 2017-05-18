@@ -8,7 +8,7 @@ Isomorphisms exist for many types and type-constructors, often because different
 concept in different ways. An example is `Option` from the Scala collection library and its isomorphic
 `Maybe` in Scalaz. 
 
-```tut:silent
+```scala
 import scalaz.Isomorphism.<~>
 import scalaz.Maybe
 ```
@@ -16,7 +16,7 @@ import scalaz.Maybe
 When we have multiple isomorphic type-classes, it can be useful to pick a favorite or default and have
 conversion be done automatic, to reduce such manual plumbing.
 
-```tut:silent
+```scala
 trait Default[F[_]]
 object Default {
   def apply[F[_]]: Default[F] = new Default[F]{}
@@ -30,30 +30,37 @@ implicit val maybeOptionIso: Maybe <~> Option = scalaz.Maybe.optionMaybeIso.flip
 implicit val optionMaybeIso: Option <~> Maybe = scalaz.Maybe.optionMaybeIso
 ```
 
-The Preferred class enriches any applied type-constructor `f` with a `preferred` method, which will
-convert it to the preferred instance `G`, if a `Favorite` is in scope for `G`, and an isomorphism exists
-between the two type-constructors. Note that the supplied Favorite is never actually used, it is only used 
+The `Default` class enriches any applied type-constructor `f` with a `default` method, which will
+convert it to the preferred instance `G`, if a `Default` is in scope for `G`, and an isomorphism exists
+between the two type-constructors. Note that the supplied `Default` is never actually used, it is only used 
 to constrain the implicit search space.
 
 Enough talk, demo time:
 
-```tut
-{
-  implicit val maybeFavorite: Default[Maybe] = Default[Maybe]
-  Option(5).default
-}
-{
-  implicit val maybeFavorite: Default[Maybe] = Default[Maybe]
-  Maybe.just(5).default
-}
-{
-  implicit val optionFavorite: Default[Option] = Default[Option]
-  Option(5).default
-}
-{
-  implicit val optionFavorite: Default[Option] = Default[Option]
-  Maybe.just(5).default
-}
+```scala
+scala> {
+     |   implicit val maybeDefault: Default[Maybe] = Default[Maybe]
+     |   Option(5).default
+     | }
+res2: scalaz.Maybe[Int] = Just(5)
+
+scala> {
+     |   implicit val maybeDefault: Default[Maybe] = Default[Maybe]
+     |   Maybe.just(5).default
+     | }
+res3: scalaz.Maybe[Int] = Just(5)
+
+scala> {
+     |   implicit val optionDefault: Default[Option] = Default[Option]
+     |   Option(5).default
+     | }
+res4: Option[Int] = Some(5)
+
+scala> {
+     |   implicit val optionDefault: Default[Option] = Default[Option]
+     |   Maybe.just(5).default
+     | }
+res5: Option[Int] = Some(5)
 ```
 
 Note that in the middle two cases, the used instance is the preferred one. The isomorphism at work behind the scenes
@@ -68,7 +75,7 @@ implicit def isoNaturalRefl[F[_]]: F <~> F = ... // Implementation can be found 
 Once we have established a method to set a Default for a given set of isomorphic type(-constructor)s,
 nothing stops us to apply these to more complicated cases. Let's try our hand at monadic composition:
 
-```tut:silent
+```scala
 import scalaz.Monad
 import scalaz.std.option.optionInstance
 import scalaz.Maybe.maybeInstance
@@ -91,7 +98,7 @@ between either Monad and the Default one.
 
 Let's set up some demo scenario:
 
-```tut:silent
+```scala
 def some1 = Option(1)
 def just2 = Maybe.just(2)
 def some3 = Option(3)
@@ -110,15 +117,18 @@ def crossMonadComposition[M[_]: Default: Monad](implicit md: Option <~> M, nd: M
 Here our `crossMonadComposition` type signature contains complexity simply so we can vary the Default in the demo-code
 below. Normally, these implicits would be globally available, here we want to provide them at will:
 
-```tut
-{
-  implicit val optionFavorite: Default[Option] = Default[Option]
-  crossMonadComposition
-}
-{
-  implicit val maybeFavorite: Default[Maybe] = Default[Maybe]
-  crossMonadComposition
-}
+```scala
+scala> {
+     |   implicit val optionDefault: Default[Option] = Default[Option]
+     |   crossMonadComposition
+     | }
+res9: Option[Int] = Some(10)
+
+scala> {
+     |   implicit val maybeDefault: Default[Maybe] = Default[Maybe]
+     |   crossMonadComposition
+     | }
+res10: scalaz.Maybe[Int] = Just(10)
 ```
 
 Shown in this way, it probably comes across as a funny, but over-engineered gimmick. Whenever isomorphisms exist, it is
